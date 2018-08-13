@@ -13,6 +13,16 @@ import (
 // Execute remote commands for each host
 func (e *ExecOpts) Execute(nodes []Endpoint) error {
 	signals := make(chan signal)
+
+	var f *os.File
+	if e.OutputFile != "" {
+		var err error
+		f, err = os.OpenFile(e.OutputFile, os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			return fmt.Errorf("opening file for writing: %v", err)
+		}
+	}
+
 	for _, node := range nodes {
 		cmdOpts := e.buildCmdOpts(node.Machine)
 		if e.Verbose {
@@ -30,6 +40,7 @@ func (e *ExecOpts) Execute(nodes []Endpoint) error {
 			ShowAddresses: e.ShowAddresses,
 			ShowUsername:  e.ShowUsername,
 			Node:          node,
+			Output:        f,
 		}
 
 		go node.executeShell()
@@ -101,7 +112,17 @@ func (s *shell) executeShell() {
 	// While we have stdout to print, print it.
 	go func() {
 		for scanner.Scan() {
-			fmt.Printf("%s%s\n", outputPrefix, scanner.Text())
+			out := fmt.Sprintf("%s: %s\n", outputPrefix, scanner.Text())
+			if s.Output != nil {
+				s.fLock.Lock()
+				if _, err := s.Output.WriteString(out); err != nil {
+					s.fLock.Unlock()
+					fmt.Printf("err writing to file:%v\n", err)
+				}
+				s.fLock.Unlock()
+			} else {
+				fmt.Printf(out)
+			}
 		}
 	}()
 

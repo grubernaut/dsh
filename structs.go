@@ -1,5 +1,10 @@
 package dsh
 
+import (
+	"os"
+	"sync"
+)
+
 //ExecOpts does things
 type ExecOpts struct {
 	ShowNames         bool
@@ -11,6 +16,7 @@ type ExecOpts struct {
 	RemoteCommandOpts string
 	ConcurrentShell   bool
 	Verbose           bool
+	OutputFile        string
 }
 
 // Endpoint represents an individual node to connect to.
@@ -35,4 +41,6 @@ type shell struct {
 	ShowAddresses bool
 	ShowUsername  bool
 	Node          Endpoint
+	Output        *os.File
+	fLock         sync.Mutex
 }
